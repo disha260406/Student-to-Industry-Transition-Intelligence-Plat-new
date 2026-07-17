@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Jobs - Student Career Platform</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f172a;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header {
+            background: #fff;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { color: #1e293b; font-weight: 700; margin-bottom: 0.25rem; }
+        .header p { color: #64748b; }
+        .btn {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.2s;
+        }
+        .btn:hover { transform: translateY(-1px); }
+        .btn-outline {
+            background: white;
+            color: #3b82f6;
+            border: 2px solid #3b82f6;
+        }
+        .btn-outline:hover { background: #3b82f6; color: white; }
+        .jobs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+        .job-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .job-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(59,130,246,0.2);
+        }
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+        .company-logo {
+            width: 60px; height: 60px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; color: white; font-weight: 700;
+            flex-shrink: 0;
+        }
+        .job-title { font-size: 1.4rem; color: #1e293b; font-weight: 700; margin-bottom: 0.3rem; }
+        .company-name { color: #667eea; font-size: 1rem; font-weight: 600; margin-bottom: 1rem; }
+        .job-details { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+        .detail-badge {
+            padding: 0.4rem 0.9rem;
+            background: #f1f5f9;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #475569;
+        }
+        .skills-section { margin: 1rem 0; }
+        .skills-section h4 { color: #1e293b; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .skills-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+        .skill-tag {
+            padding: 0.4rem 0.9rem;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 500;
+        }
+        .skill-required { background: #ffe5e5; color: #dc2626; }
+        .skill-missing { background: #fff3cd; color: #856404; }
+        .match-score {
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 1rem;
+        }
+        .match-score-value { font-size: 2rem; font-weight: 700; }
+        .match-score-label { font-size: 0.85rem; opacity: 0.9; }
+        .loading { text-align: center; padding: 4rem; background: white; border-radius: 20px; }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 48px; height: 48px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .empty-state { text-align: center; padding: 4rem; background: white; border-radius: 20px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div>
+            <h1>💼 Browse Jobs</h1>
+            <p id="headerSub">See what's out there and how you match up</p>
+        </div>
+        <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+            <div id="appliedBadge" style="display:none;position:relative;">
+                <button onclick="toggleAppliedPanel()" style="background:#f0fdf4;border:2px solid #22c55e;color:#15803d;padding:0.6rem 1.2rem;border-radius:8px;font-size:0.9rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:0.5rem;">
+                    📋 Applied <span id="appliedCount" style="background:#22c55e;color:white;border-radius:20px;padding:0.1rem 0.55rem;font-size:0.8rem;">0</span>
+                </button>
+                <div id="appliedPanel" style="display:none;position:absolute;right:0;top:calc(100% + 0.5rem);background:white;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.15);min-width:300px;z-index:200;border:1px solid #e2e8f0;overflow:hidden;">
+                    <div style="padding:0.75rem 1rem;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-weight:600;color:#1e293b;font-size:0.9rem;">Jobs You Applied To</div>
+                    <div id="appliedList" style="max-height:320px;overflow-y:auto;"></div>
+                    <div style="padding:0.75rem 1rem;border-top:1px solid #e2e8f0;text-align:center;">
+                        <a href="results.html" style="color:#3b82f6;font-size:0.85rem;font-weight:600;text-decoration:none;">View full dashboard →</a>
+                    </div>
+                </div>
+            </div>
+            <a href="index.html" class="btn btn-outline">🏠 Home</a>
+            <a href="results.html" class="btn btn-outline" id="myResultsBtn" style="display:none;">📊 My Results</a>
+        </div>
+    </div>
+
+    <div id="jobsContainer">
+        <div class="loading"><div class="spinner"></div><p>Loading jobs...</p></div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="jobModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1000;padding:2rem;overflow-y:auto;">
+    <div style="background:white;border-radius:16px;padding:2rem;max-width:750px;width:100%;margin:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <button onclick="closeModal()" style="position:absolute;top:1rem;right:1.25rem;background:none;border:none;font-size:1.8rem;cursor:pointer;color:#94a3b8;line-height:1;">×</button>
+        <div id="modalContent"></div>
+    </div>
+</div>
+
+<script>
+    const API_URL = '/api';
+    const studentId = localStorage.getItem('studentId');
+    const studentBranch = localStorage.getItem('studentBranch');
+    const studentSkills = localStorage.getItem('studentSkills');
+    const studentName = localStorage.getItem('studentName');
+
+    if (studentId) document.getElementById('myResultsBtn').style.display = 'inline-block';
+
+    if (studentName && studentBranch) {
+        document.getElementById('headerSub').textContent =
+            `Showing jobs for ${studentName} · ${studentBranch}`;
+    }
+
+    function renderAppliedBadge() {
+        const applications = JSON.parse(localStorage.getItem('applications') || '[]');
+        const badge = document.getElementById('appliedBadge');
+        const countEl = document.getElementById('appliedCount');
+        const listEl = document.getElementById('appliedList');
+
+        if (!studentId || applications.length === 0) {
+            badge.style.display = 'none';
+            return;
+        }
+
+        badge.style.display = 'block';
+        countEl.textContent = applications.length;
+
+        const statusColors = { 'Applied':'#3b82f6', 'Shortlisted':'#d97706', 'Selected':'#16a34a', 'Rejected':'#dc2626' };
+
+        listEl.innerHTML = applications.map(app => `
+            <div style="padding:0.75rem 1rem;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;gap:0.5rem;">
+                <div>
+                    <div style="font-weight:600;color:#1e293b;font-size:0.88rem;">${app.job_role}</div>
+                    <div style="color:#64748b;font-size:0.8rem;">${app.company} · ${app.applied_date}</div>
+                </div>
+                <span style="background:${statusColors[app.status] || '#3b82f6'}22;color:${statusColors[app.status] || '#3b82f6'};padding:0.2rem 0.7rem;border-radius:20px;font-size:0.75rem;font-weight:600;white-space:nowrap;">${app.status}</span>
+            </div>`).join('');
+    }
+
+    function toggleAppliedPanel() {
+        const panel = document.getElementById('appliedPanel');
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Close panel when clicking outside
+    document.addEventListener('click', e => {
+        const badge = document.getElementById('appliedBadge');
+        if (badge && !badge.contains(e.target)) {
+            document.getElementById('appliedPanel').style.display = 'none';
+        }
+    });
+
+    async function loadJobs() {
+        try {
+            let jobs = [];
+
+            if (studentBranch && studentSkills) {
+                // Use recommendation engine if logged in
+                const res = await fetch(`${API_URL}/recommend-jobs`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ branch: studentBranch, skills: studentSkills })
+                });
+                const result = await res.json();
+                if (result.success && result.recommendations && result.recommendations.length > 0) {
+                    displayRecommendedJobs(result.recommendations);
+                    return;
+                }
+                // If no recommendations, fall through to show all jobs
+            }
+
+            // Not logged in or no recommendations: show all jobs from DB
+            const res = await fetch(`${API_URL}/jobs/`);
+            const result = await res.json();
+            if (result.success && result.data && result.data.length > 0) {
+                displayAllJobs(result.data);
+            } else {
+                showEmptyState();
+            }
+        } catch (err) {
+            document.getElementById('jobsContainer').innerHTML = `
+                <div class="empty-state">
+                    <h2>❌ Error Loading Jobs</h2>
+                    <p style="color:#666;margin-top:0.5rem;">${err.message}</p>
+                    <p style="margin-top:0.5rem;">Make sure backend is running on port 5000</p>
+                </div>`;
+        }
+    }
+
+    function displayRecommendedJobs(jobs) {
+        const container = document.getElementById('jobsContainer');
+        container.className = 'jobs-grid';
+        container.innerHTML = '';
+        const applications = JSON.parse(localStorage.getItem('applications') || '[]');
+
+        jobs.forEach((job, idx) => {
+            const matchColor = job.match_percentage >= 60 ? '#22c55e'
+                             : job.match_percentage >= 30 ? '#f59e0b' : '#ef4444';
+            const isApplied = applications.some(a => a.job_role === job.job_role && a.company === job.company_name);
+            const card = document.createElement('div');
+            card.className = 'job-card';
+            card.style.cursor = 'pointer';
+            card.style.position = 'relative';
+            card.onclick = () => showModal(job, 'recommended', matchColor);
+            card.innerHTML = `
+                ${isApplied ? '<div style="position:absolute;top:1rem;right:1rem;background:#dcfce7;color:#15803d;padding:0.25rem 0.75rem;border-radius:20px;font-size:0.78rem;font-weight:700;">✅ Applied</div>' : ''}
+                <div class="job-header">
+                    <div style="flex:1;margin-right:1rem;">
+                        <div class="job-title">${job.job_role}</div>
+                        <div class="company-name">${job.company_name}</div>
+                    </div>
+                    <div class="company-logo">${job.company_name.substring(0,2).toUpperCase()}</div>
+                </div>
+                <div class="job-details">
+                    <span class="detail-badge">🎓 ${job.field}</span>
+                    <span class="detail-badge">🏆 #${idx+1} Match</span>
+                </div>
+                ${job.missing_skills.length > 0 && job.match_percentage < 100 ? `
+                    <div class="skills-section">
+                        <h4>📚 Skills to Learn</h4>
+                        <div class="skills-tags">
+                            ${job.missing_skills.map(s => `<span class="skill-tag skill-missing">${s}</span>`).join('')}
+                        </div>
+                    </div>` : `<p style="color:#22c55e;font-weight:600;margin:1rem 0;">✅ You have all required skills!</p>`}
+                <div class="match-score" style="background:linear-gradient(135deg,${matchColor},${matchColor}bb);">
+                    <div class="match-score-value">${job.match_percentage}%</div>
+                    <div class="match-score-label">Your Match Score</div>
+                </div>`;
+            container.appendChild(card);
+        });
+    }
+
+    function displayAllJobs(jobs) {
+        const container = document.getElementById('jobsContainer');
+        container.className = 'jobs-grid';
+        container.innerHTML = '';
+
+        jobs.forEach(job => {
+            const requiredSkills = job.required_skills ? job.required_skills.split(',').map(s => s.trim()) : [];
+            const card = document.createElement('div');
+            card.className = 'job-card';
+            card.style.cursor = 'pointer';
+            card.onclick = () => showModalWithMatch(job);
+            card.innerHTML = `
+                <div class="job-header">
+                    <div style="flex:1;margin-right:1rem;">
+                        <div class="job-title">${job.title}</div>
+                        <div class="company-name">${job.company}</div>
+                    </div>
+                    <div class="company-logo">${job.company.substring(0,2).toUpperCase()}</div>
+                </div>
+                <div class="job-details">
+                    ${job.branch ? `<span class="detail-badge">🎓 ${job.branch}</span>` : ''}
+                    <span class="detail-badge">📚 Min CGPA: ${job.min_cgpa || 0}</span>
+                </div>
+                <div class="skills-section">
+                    <h4>🎯 Required Skills</h4>
+                    <div class="skills-tags">
+                        ${requiredSkills.slice(0,5).map(s => `<span class="skill-tag skill-required">${s}</span>`).join('')}
+                        ${requiredSkills.length > 5 ? `<span class="skill-tag skill-required">+${requiredSkills.length-5} more</span>` : ''}
+                    </div>
+                </div>
+                <div style="background:#f1f5f9;padding:0.75rem;border-radius:8px;text-align:center;margin-top:1rem;color:#64748b;font-size:0.9rem;">
+                    Click to view full details
+                </div>`;
+            container.appendChild(card);
+        });
+    }
+
+    // Calculate match % between student skills and job required skills
+    function calcMatch(studentSkillsStr, requiredSkillsStr) {
+        if (!studentSkillsStr || !requiredSkillsStr) return { percent: 0, missing: [] };
+        const student = new Set(studentSkillsStr.split(',').map(s => s.trim().toLowerCase()));
+        const required = requiredSkillsStr.split(',').map(s => s.trim());
+        const matched = required.filter(s => student.has(s.toLowerCase()));
+        const missing = required.filter(s => !student.has(s.toLowerCase()));
+        const percent = required.length > 0 ? Math.round((matched.length / required.length) * 100) : 0;
+        return { percent, missing };
+    }
+
+    function showModalWithMatch(job) {
+        if (studentSkills) {
+            const { percent, missing } = calcMatch(studentSkills, job.required_skills);
+            const matchColor = percent >= 60 ? '#22c55e' : percent >= 30 ? '#f59e0b' : '#ef4444';
+            // Build a fake recommended-style job object
+            const fakeJob = {
+                job_role: job.title,
+                company_name: job.company,
+                field: job.branch,
+                match_percentage: percent,
+                missing_skills: missing,
+                min_cgpa: job.min_cgpa,
+                location: job.location,
+                job_type: job.job_type,
+                salary_range: job.salary_range,
+                experience_required: job.experience_required,
+                preferred_skills: job.preferred_skills
+            };
+            showModal(fakeJob, 'recommended', matchColor);
+        } else {
+            showModal(job, 'all');
+        }
+    }
+
+    function showModal(job, type, matchColor) {
+        const modal = document.getElementById('jobModal');
+        const content = document.getElementById('modalContent');
+
+        // Normalize fields for both recommended and all-jobs
+        const title = type === 'recommended' ? job.job_role : job.title;
+        const company = type === 'recommended' ? job.company_name : job.company;
+        const field = type === 'recommended' ? job.field : job.branch;
+        const minCgpa = job.min_cgpa || 'Any';
+        const location = job.location || 'Multiple Locations';
+        const jobType = job.job_type || 'Full Time, Permanent';
+        const experience = job.experience_required || '0 - 2 years';
+        const salary = job.salary_range || 'Not Disclosed';
+
+        let requiredSkills = [];
+        if (type === 'recommended') {
+            // Only show the job's actual required skills (matched + missing combined)
+            const studentSet = new Set((studentSkills || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
+            const missing = job.missing_skills || [];
+            const matched = missing.length === 0
+                ? (studentSkills ? studentSkills.split(',').map(s => s.trim()).filter(Boolean) : [])
+                : (studentSkills ? studentSkills.split(',').map(s => s.trim()).filter(s => !missing.map(m => m.toLowerCase()).includes(s.toLowerCase())).filter(Boolean) : []);
+            requiredSkills = [...matched, ...missing];
+        } else {
+            requiredSkills = job.required_skills ? job.required_skills.split(',').map(s => s.trim()) : [];
+        }
+        const preferredSkills = job.preferred_skills ? job.preferred_skills.split(',').map(s => s.trim()) : [];
+
+        const matchBadge = type === 'recommended'
+            ? '<div style="display:inline-block;background:' + (matchColor || '#3b82f6') + ';color:white;padding:0.3rem 1rem;border-radius:20px;font-size:0.85rem;font-weight:600;margin-bottom:0.75rem;">' + job.match_percentage + '% Match</div>'
+            : '';
+
+        // Only show missing skills if match < 100%
+        const missingSkillsHtml = (type === 'recommended' && job.missing_skills && job.missing_skills.length > 0 && job.match_percentage < 100)
+            ? '<div style="background:#fff7ed;border:1px solid #fed7aa;padding:1rem;border-radius:10px;margin-top:1rem;"><p style="font-size:0.88rem;font-weight:600;color:#9a3412;margin-bottom:0.5rem;">📚 Skills you still need to learn:</p><div style="display:flex;flex-wrap:wrap;gap:0.4rem;">' +
+              job.missing_skills.map(s => '<span style="padding:0.3rem 0.8rem;background:#ffedd5;color:#9a3412;border-radius:20px;font-size:0.82rem;">' + s + '</span>').join('') +
+              '</div></div>'
+            : '';
+
+        // Build apply section separately to avoid ternary-inside-template-literal issues
+        let applySection = '';
+        if (type === 'recommended') {
+            if (job.match_percentage >= 30) {
+                // Check if already applied
+                const applications = JSON.parse(localStorage.getItem('applications') || '[]');
+                const alreadyApplied = applications.find(a => a.job_role === title && a.company === company);
+                const btnLabel = alreadyApplied ? '✅ Applied' : 'Apply Now';
+                const btnStyle = alreadyApplied
+                    ? 'background:#16a34a;color:white;padding:0.75rem 2rem;border:none;border-radius:10px;font-size:1rem;font-weight:600;cursor:default;'
+                    : 'background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;padding:0.75rem 2rem;border:none;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer;';
+
+                const eligibilityBadge = job.match_percentage >= 50
+                    ? '<span style="font-size:1.1rem;font-weight:700;color:#16a34a;">✅ You are eligible!</span><span style="margin-left:0.75rem;background:#dcfce7;color:#16a34a;padding:0.3rem 0.9rem;border-radius:20px;font-size:0.9rem;font-weight:600;">' + job.match_percentage + '% Match</span>'
+                    : '<span style="font-size:1rem;font-weight:700;color:#d97706;">⚠️ Partial match</span><span style="margin-left:0.75rem;background:#fef3c7;color:#d97706;padding:0.3rem 0.9rem;border-radius:20px;font-size:0.9rem;font-weight:600;">' + job.match_percentage + '% Match</span>';
+
+                applySection = '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">' +
+                    '<div>' + eligibilityBadge + '</div>' +
+                    '<button id="applyBtn"' +
+                    ' data-role="' + title.replace(/"/g,'&quot;') + '"' +
+                    ' data-company="' + company.replace(/"/g,'&quot;') + '"' +
+                    ' data-field="' + (field||'').replace(/"/g,'&quot;') + '"' +
+                    ' data-match="' + (parseFloat(job.match_percentage)||0) + '"' +
+                    ' style="' + btnStyle + '"' + (alreadyApplied ? ' disabled' : '') + '>' + btnLabel + '</button>' +
+                    '</div>';
+            } else {
+                const missingTags = (job.missing_skills || []).map(s =>
+                    '<span style="padding:0.35rem 0.9rem;background:#fee2e2;color:#dc2626;border-radius:20px;font-size:0.82rem;font-weight:500;">' + s + '</span>'
+                ).join('');
+                const applications = JSON.parse(localStorage.getItem('applications') || '[]');
+                const alreadyApplied = applications.find(a => a.job_role === title && a.company === company);
+                applySection = '<div>' +
+                    '<div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;flex-wrap:wrap;">' +
+                    '<span style="font-size:1rem;font-weight:700;color:#dc2626;">⚠️ Low match</span>' +
+                    '<span style="background:#fee2e2;color:#dc2626;padding:0.3rem 0.9rem;border-radius:20px;font-size:0.9rem;font-weight:600;">' + job.match_percentage + '% Match</span>' +
+                    '</div>' +
+                    '<p style="font-size:0.88rem;color:#475569;margin-bottom:0.5rem;">Skills to learn:</p>' +
+                    '<div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:1rem;">' + missingTags + '</div>' +
+                    '<button id="applyBtn"' +
+                    ' data-role="' + title.replace(/"/g,'&quot;') + '"' +
+                    ' data-company="' + company.replace(/"/g,'&quot;') + '"' +
+                    ' data-field="' + (field||'').replace(/"/g,'&quot;') + '"' +
+                    ' data-match="' + (parseFloat(job.match_percentage)||0) + '"' +
+                    ' style="background:' + (alreadyApplied ? '#16a34a' : '#64748b') + ';color:white;padding:0.65rem 1.5rem;border:none;border-radius:10px;font-size:0.9rem;font-weight:600;cursor:pointer;"' +
+                    (alreadyApplied ? ' disabled' : '') + '>' + (alreadyApplied ? '✅ Applied' : 'Apply Anyway') + '</button>' +
+                    '</div>';
+            }
+        } else {
+            applySection = '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">' +
+                '<span style="color:#475569;font-size:0.9rem;">Login to check your eligibility for this job</span>' +
+                '<button id="checkEligBtn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;padding:0.75rem 2rem;border-radius:10px;font-size:1rem;font-weight:600;border:none;cursor:pointer;">Check Eligibility</button>' +
+                '</div>';
+        }
+
+        content.innerHTML = `
+            <div style="padding-bottom:1.25rem;border-bottom:1px solid #e2e8f0;margin-bottom:1.25rem;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div style="flex:1;">
+                        ${matchBadge}
+                        <h1 style="font-size:1.5rem;font-weight:700;color:#1e293b;margin-bottom:0.2rem;">${title}</h1>
+                        <p style="color:#3b82f6;font-size:1rem;font-weight:500;margin-bottom:0.75rem;">${company}</p>
+                        <div style="display:flex;flex-wrap:wrap;gap:1.5rem;color:#475569;font-size:0.9rem;margin-bottom:0.5rem;">
+                            <span>🗓 ${experience}</span>
+                            <span>₹ ${salary}</span>
+                        </div>
+                        <div style="color:#475569;font-size:0.9rem;">📍 ${location}</div>
+                    </div>
+                    <div style="width:56px;height:56px;background:#eff6ff;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;color:#3b82f6;flex-shrink:0;border:1px solid #dbeafe;">
+                        ${company.substring(0,1).toUpperCase()}
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex;flex-wrap:wrap;gap:1.5rem;align-items:center;padding-bottom:1.25rem;border-bottom:1px solid #e2e8f0;margin-bottom:1.5rem;font-size:0.88rem;color:#64748b;">
+                <span>📚 Min CGPA: <strong style="color:#1e293b;">${minCgpa}</strong></span>
+                ${field ? '<span>🎓 Field: <strong style="color:#1e293b;">' + field + '</strong></span>' : ''}
+                <span>💼 <strong style="color:#1e293b;">${jobType}</strong></span>
+            </div>
+
+            <div style="margin-bottom:1.5rem;">
+                <h3 style="font-size:1rem;font-weight:700;color:#1e293b;margin-bottom:0.75rem;">Job description</h3>
+                <ul style="list-style:none;padding:0;color:#334155;font-size:0.9rem;line-height:1.9;">
+                    <li>→ Strong knowledge of ${requiredSkills.slice(0,3).join(', ')}</li>
+                    <li>→ Ability to work in a fast-paced, collaborative environment</li>
+                    <li>→ Good problem-solving and analytical skills</li>
+                    <li>→ Experience with real-world projects or internships is a plus</li>
+                    <li>→ Strong communication and teamwork skills</li>
+                </ul>
+            </div>
+
+            <div style="margin-bottom:1.5rem;font-size:0.9rem;line-height:2;color:#334155;">
+                <p><strong>Role:</strong> ${title}</p>
+                <p><strong>Industry Type:</strong> IT Services & Consulting</p>
+                <p><strong>Department:</strong> ${field || 'Engineering & Technology'}</p>
+                <p><strong>Employment Type:</strong> ${jobType}</p>
+                <p><strong>Role Category:</strong> ${field || 'Software Development'}</p>
+            </div>
+
+            <div style="margin-bottom:1.5rem;font-size:0.9rem;line-height:2;color:#334155;">
+                <h3 style="font-size:1rem;font-weight:700;color:#1e293b;margin-bottom:0.5rem;">Education</h3>
+                <p><strong>UG:</strong> B.Tech / B.E. in ${field || 'Any Branch'}</p>
+                <p><strong>PG:</strong> Post Graduation Not Required</p>
+            </div>
+
+            <div style="margin-bottom:1rem;">
+                <h3 style="font-size:1rem;font-weight:700;color:#1e293b;margin-bottom:0.75rem;">Key Skills</h3>
+                <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+                    ${type === 'recommended'
+                        ? requiredSkills.map(s => {
+                            const isMissing = (job.missing_skills || []).map(m => m.toLowerCase()).includes(s.toLowerCase());
+                            return isMissing
+                                ? '<span style="padding:0.35rem 1rem;border:1px solid #fca5a5;border-radius:20px;font-size:0.82rem;color:#dc2626;background:#fee2e2;">' + s + '</span>'
+                                : '<span style="padding:0.35rem 1rem;border:1px solid #86efac;border-radius:20px;font-size:0.82rem;color:#15803d;background:#dcfce7;">' + s + '</span>';
+                          }).join('')
+                        : requiredSkills.map(s => '<span style="padding:0.35rem 1rem;border:1px solid #cbd5e1;border-radius:20px;font-size:0.82rem;color:#334155;">' + s + '</span>').join('')
+                    }
+                    ${preferredSkills.map(s => '<span style="padding:0.35rem 1rem;border:1px solid #bfdbfe;border-radius:20px;font-size:0.82rem;color:#3b82f6;">' + s + '</span>').join('')}
+                </div>
+            </div>
+
+            ${missingSkillsHtml}
+
+            <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid #e2e8f0;">
+                ${applySection}
+            </div>`;
+
+        modal.style.display = 'block';
+
+        // Attach button events after innerHTML is set
+        const applyBtn = document.getElementById('applyBtn');
+        if (applyBtn) {
+            applyBtn.addEventListener('click', () => {
+                const r = applyBtn.dataset.role;
+                const c = applyBtn.dataset.company;
+                const f = applyBtn.dataset.field;
+                const m = parseFloat(applyBtn.dataset.match) || 0;
+                const today = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+
+                // Save to backend DB (persistent)
+                if (studentId) {
+                    fetch(`${API_URL}/applications/apply`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            student_id: parseInt(studentId),
+                            job_role: r, company: c, field: f,
+                            match_percentage: m, applied_date: today
+                        })
+                    }).catch(err => console.error('Save application failed:', err));
+                }
+
+                // Also keep localStorage as cache for badge
+                const applications = JSON.parse(localStorage.getItem('applications') || '[]');
+                if (!applications.find(a => a.job_role === r && a.company === c)) {
+                    applications.push({ job_role: r, company: c, field: f, match_percentage: m, applied_date: today, status: 'Applied' });
+                    localStorage.setItem('applications', JSON.stringify(applications));
+                }
+                renderAppliedBadge();
+                applyBtn.textContent = '✅ Applied!';
+                applyBtn.style.background = '#16a34a';
+                applyBtn.disabled = true;
+            });
+        }
+        const checkEligBtn = document.getElementById('checkEligBtn');
+        if (checkEligBtn) {
+            checkEligBtn.addEventListener('click', () => {
+                localStorage.setItem('returnTo', 'jobs.html');
+                window.location.href = 'login.html';
+            });
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('jobModal').style.display = 'none';
+    }
+
+    document.getElementById('jobModal').addEventListener('click', e => {
+        if (e.target.id === 'jobModal') closeModal();
+    });
+
+    function showEmptyState() {
+        document.getElementById('jobsContainer').innerHTML = `
+            <div class="empty-state">
+                <div style="font-size:3rem;margin-bottom:1rem;">💼</div>
+                <h2>No Jobs Available</h2>
+                <p style="color:#666;margin-top:0.5rem;">Check back later!</p>
+            </div>`;
+    }
+
+    loadJobs();
+    renderAppliedBadge();
+</script>
+</body>
+</html>

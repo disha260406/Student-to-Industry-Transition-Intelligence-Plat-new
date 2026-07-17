@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Student Career Platform</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .login-container {
+            max-width: 1000px;
+            width: 100%;
+            background: white;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 600px;
+        }
+        .left-panel {
+            background: linear-gradient(135deg, #e8f0fe 0%, #f0f4ff 100%);
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .illustration {
+            width: 100%;
+            max-width: 350px;
+            position: relative;
+            z-index: 2;
+        }
+        .illustration svg {
+            width: 100%;
+            height: auto;
+        }
+        .decorative-circle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(102, 126, 234, 0.1);
+        }
+        .circle-1 {
+            width: 100px;
+            height: 100px;
+            top: 10%;
+            left: 10%;
+        }
+        .circle-2 {
+            width: 60px;
+            height: 60px;
+            bottom: 20%;
+            right: 15%;
+        }
+        .circle-3 {
+            width: 40px;
+            height: 40px;
+            top: 60%;
+            left: 5%;
+        }
+        .right-panel {
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        h1 {
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        .subtitle {
+            color: #64748b;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 0.9rem;
+        }
+        .input-wrapper {
+            position: relative;
+        }
+        .input-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+        input {
+            width: 100%;
+            padding: 0.875rem 1rem 0.875rem 3rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.2s;
+            background: #f8fafc;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .forgot-link {
+            text-align: right;
+            margin-bottom: 1.5rem;
+        }
+        .forgot-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .forgot-link a:hover {
+            text-decoration: underline;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .divider {
+            text-align: center;
+            margin: 1.5rem 0;
+            position: relative;
+        }
+        .divider::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 100%;
+            height: 1px;
+            background: #e2e8f0;
+        }
+        .divider span {
+            background: white;
+            padding: 0 1rem;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 1;
+        }
+        .social-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .social-btn {
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-weight: 500;
+            color: #475569;
+        }
+        .social-btn:hover {
+            border-color: #667eea;
+            background: #f8fafc;
+        }
+        .signup-link {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #64748b;
+            font-size: 0.95rem;
+        }
+        .signup-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .signup-link a:hover {
+            text-decoration: underline;
+        }
+        .status {
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        @media (max-width: 768px) {
+            .login-container {
+                grid-template-columns: 1fr;
+            }
+            .left-panel {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="left-panel">
+            <div class="decorative-circle circle-1"></div>
+            <div class="decorative-circle circle-2"></div>
+            <div class="decorative-circle circle-3"></div>
+            
+            <div class="illustration">
+                <svg viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Desk -->
+                    <rect x="80" y="280" width="240" height="8" fill="#94a3b8" rx="4"/>
+                    <rect x="100" y="288" width="80" height="80" fill="#cbd5e1" rx="4"/>
+                    <rect x="220" y="288" width="80" height="80" fill="#cbd5e1" rx="4"/>
+                    
+                    <!-- Laptop -->
+                    <rect x="160" y="220" width="100" height="70" fill="#667eea" rx="4"/>
+                    <rect x="165" y="225" width="90" height="50" fill="#e0e7ff"/>
+                    <path d="M 150 290 L 270 290 L 260 300 L 160 300 Z" fill="#94a3b8"/>
+                    
+                    <!-- Person -->
+                    <circle cx="200" cy="150" r="30" fill="#1e293b"/>
+                    <ellipse cx="200" cy="200" rx="40" ry="50" fill="#667eea"/>
+                    <rect x="160" y="180" width="20" height="60" fill="#667eea" rx="10"/>
+                    <rect x="220" y="180" width="20" height="60" fill="#667eea" rx="10"/>
+                    
+                    <!-- Clock -->
+                    <circle cx="320" cy="100" r="25" fill="white" stroke="#94a3b8" stroke-width="3"/>
+                    <line x1="320" y1="100" x2="320" y2="85" stroke="#667eea" stroke-width="3" stroke-linecap="round"/>
+                    <line x1="320" y1="100" x2="330" y2="100" stroke="#667eea" stroke-width="2" stroke-linecap="round"/>
+                    
+                    <!-- Decorative elements -->
+                    <circle cx="80" cy="80" r="4" fill="#667eea" opacity="0.5"/>
+                    <path d="M 60 120 Q 80 110 100 120" stroke="#667eea" stroke-width="2" fill="none" opacity="0.5"/>
+                    <path d="M 300 200 Q 320 190 340 200" stroke="#667eea" stroke-width="2" fill="none" opacity="0.5"/>
+                </svg>
+            </div>
+        </div>
+        
+        <div class="right-panel">
+            <h1>Student Login</h1>
+            <p class="subtitle">Hey, enter your details to sign in to your account</p>
+            
+            <div id="status"></div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">👤</span>
+                        <input type="email" id="email" required placeholder="your.email@example.com" autofocus autocomplete="off">
+                    </div>
+                </div>
+                
+                <div class="forgot-link">
+                    <a href="#">Having trouble to sign in?</a>
+                </div>
+                
+                <button type="submit" class="btn" id="loginBtn">
+                    Login In
+                </button>
+            </form>
+            
+            <div class="signup-link">
+                Don't have an account? <a href="register.html">Signup Now</a>
+            </div>
+            
+            <div style="text-align: center; margin-top: 1rem;">
+                <a href="index.html" style="color: #94a3b8; text-decoration: none; font-size: 0.9rem;">← Back to Home</a> | 
+                <a href="jobs.html" style="color: #94a3b8; text-decoration: none; font-size: 0.9rem;">Browse Jobs</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+        
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const loginBtn = document.getElementById('loginBtn');
+            const statusDiv = document.getElementById('status');
+            const email = document.getElementById('email').value;
+            
+            loginBtn.disabled = true;
+            loginBtn.textContent = '🔍 Searching...';
+            
+            try {
+                const response = await fetch(`${API_URL}/students/`);
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    const student = result.data.find(s => s.email.toLowerCase() === email.toLowerCase());
+                    
+                    if (student) {
+                        statusDiv.className = 'status success';
+                        statusDiv.innerHTML = '✅ Found! Redirecting...';
+                        
+                        localStorage.setItem('studentId', student.id);
+                        localStorage.setItem('studentEmail', student.email);
+                        localStorage.setItem('studentName', student.name);
+                        localStorage.setItem('studentBranch', student.branch || '');
+                        localStorage.setItem('studentSkills', student.skills || '');
+                        
+                        setTimeout(() => {
+                            const returnTo = localStorage.getItem('returnTo') || `results.html?id=${student.id}`;
+                            localStorage.removeItem('returnTo');
+                            window.location.href = returnTo;
+                        }, 1000);
+                    } else {
+                        statusDiv.className = 'status error';
+                        statusDiv.innerHTML = '❌ Email not found!<br><small>Please check your email or <a href="register.html" style="color: #721c24; font-weight: 600;">register as a new user</a></small>';
+                    }
+                } else {
+                    throw new Error('Failed to fetch students');
+                }
+                
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = `❌ Error: ${error.message}<br><small>Make sure backend is running on port 5000</small>`;
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login In';
+            }
+        });
+    </script>
+</body>
+</html>
