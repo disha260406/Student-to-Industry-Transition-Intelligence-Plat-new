@@ -64,12 +64,29 @@ def init_db():
             title TEXT NOT NULL,
             company TEXT NOT NULL,
             branch TEXT,
+            description TEXT,
             required_skills TEXT NOT NULL,
             preferred_skills TEXT,
             min_cgpa REAL DEFAULT 0,
+            experience_required TEXT,
+            salary_range TEXT,
+            location TEXT,
+            job_type TEXT,
             is_active INTEGER DEFAULT 1
         )
     ''')
+    # Add any missing columns to existing SQLite table if created earlier
+    existing_cols = [col[1] for col in cursor.execute("PRAGMA table_info(job_roles)").fetchall()]
+    for col_name, col_type in [
+        ('description', 'TEXT'),
+        ('experience_required', 'TEXT'),
+        ('salary_range', 'TEXT'),
+        ('location', 'TEXT'),
+        ('job_type', 'TEXT')
+    ]:
+        if col_name not in existing_cols:
+            cursor.execute(f"ALTER TABLE job_roles ADD COLUMN {col_name} {col_type}")
+
     
     # Insert jobs from CSV if table is empty
     cursor.execute('SELECT COUNT(*) FROM job_roles')

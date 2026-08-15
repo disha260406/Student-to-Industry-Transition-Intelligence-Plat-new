@@ -23,7 +23,16 @@ class PlacementPredictor:
                     self.scaler = pickle.load(f)
                 print("Model and scaler loaded successfully!")
             else:
-                print("Model files not found. Please train the model first.")
+                print("Model files not found. Auto-training model...")
+                try:
+                    try:
+                        from ml.train_model import train_placement_model
+                    except ImportError:
+                        from train_model import train_placement_model
+                    self.model, self.scaler, _ = train_placement_model()
+                    print("Auto-training completed successfully!")
+                except Exception as train_err:
+                    print(f"Auto-training failed: {train_err}. Using rule-based fallback.")
         except Exception as e:
             print(f"Error loading model: {e}")
     

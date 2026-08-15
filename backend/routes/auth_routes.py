@@ -4,7 +4,10 @@ import jwt
 from datetime import datetime, timedelta
 from functools import wraps
 from config import Config
-from database import execute_query, execute_update
+try:
+    from database_sqlite import execute_query, execute_update
+except ImportError:
+    from database import execute_query, execute_update
 
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 

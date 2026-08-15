@@ -7,8 +7,16 @@ from dotenv import load_dotenv
 import os
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
-# Path to frontend folder (sibling of backend/)
-FRONTEND_DIR = os.path.join(os.path.dirname(__file__), '..', 'frontend')
+# Path to frontend folder (sibling of backend/ or root fallback)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', 'frontend'))
+if not os.path.exists(FRONTEND_DIR):
+    FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, '..'))
+
+# Ensure directories exist
+os.makedirs(os.path.join(BASE_DIR, 'models'), exist_ok=True)
+os.makedirs(os.path.join(BASE_DIR, 'data'), exist_ok=True)
+os.makedirs(os.path.join(BASE_DIR, 'uploads'), exist_ok=True)
 
 def create_app():
     app = Flask(__name__, static_folder=None)
@@ -17,6 +25,7 @@ def create_app():
 
     # Initialize SQLite database
     import database_sqlite
+    database_sqlite.init_db()
 
     # Register blueprints
     from routes import student_routes, analysis_routes, job_routes, recommend_routes, application_routes
@@ -43,9 +52,10 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
+    port = int(os.environ.get('PORT', 5000))
     print("\n" + "="*60)
-    print("✅ Backend running on http://localhost:5000")
-    print("✅ Serving frontend from /frontend")
-    print("✅ Using SQLite database (no MySQL needed)")
+    print(f"[OK] Backend running on http://0.0.0.0:{port}")
+    print(f"[OK] Serving frontend from {FRONTEND_DIR}")
+    print("[OK] Using SQLite database")
     print("="*60 + "\n")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=port)
