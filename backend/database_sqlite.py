@@ -1,7 +1,11 @@
 import sqlite3
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'students.db')
+# On Vercel, the filesystem is read-only except /tmp
+if os.environ.get('VERCEL'):
+    DB_PATH = '/tmp/students.db'
+else:
+    DB_PATH = os.path.join(os.path.dirname(__file__), 'students.db')
 
 def init_db():
     """Initialize SQLite database"""

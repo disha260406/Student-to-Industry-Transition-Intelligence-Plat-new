@@ -6,7 +6,11 @@ import os, json, uuid
 bp = Blueprint('students', __name__, url_prefix='/api/students')
 github_analyzer = GitHubAnalyzer()
 
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), '..', 'uploads')
+# On Vercel, filesystem is read-only except /tmp
+if os.environ.get('VERCEL'):
+    UPLOAD_DIR = '/tmp/uploads'
+else:
+    UPLOAD_DIR = os.path.join(os.path.dirname(__file__), '..', 'uploads')
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 def save_file(file_obj, prefix=''):

@@ -13,10 +13,11 @@ FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', 'frontend'))
 if not os.path.exists(FRONTEND_DIR):
     FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, '..'))
 
-# Ensure directories exist
-os.makedirs(os.path.join(BASE_DIR, 'models'), exist_ok=True)
-os.makedirs(os.path.join(BASE_DIR, 'data'), exist_ok=True)
-os.makedirs(os.path.join(BASE_DIR, 'uploads'), exist_ok=True)
+# Ensure directories exist (use /tmp on Vercel where filesystem is read-only)
+_tmp = os.environ.get('VERCEL')
+os.makedirs(os.path.join(BASE_DIR, 'models'), exist_ok=True) if not _tmp else None
+os.makedirs(os.path.join(BASE_DIR, 'data'), exist_ok=True) if not _tmp else None
+os.makedirs('/tmp/uploads' if _tmp else os.path.join(BASE_DIR, 'uploads'), exist_ok=True)
 
 def create_app():
     app = Flask(__name__, static_folder=None)
@@ -28,12 +29,13 @@ def create_app():
     database_sqlite.init_db()
 
     # Register blueprints
-    from routes import student_routes, analysis_routes, job_routes, recommend_routes, application_routes
+    from routes import student_routes, analysis_routes, job_routes, recommend_routes, application_routes, auth_routes
     app.register_blueprint(student_routes.bp)
     app.register_blueprint(analysis_routes.bp)
     app.register_blueprint(job_routes.bp)
     app.register_blueprint(recommend_routes.bp)
     app.register_blueprint(application_routes.bp)
+    app.register_blueprint(auth_routes.bp)
 
     # Serve frontend HTML files (must NOT match /api/... routes)
     @app.route('/')
