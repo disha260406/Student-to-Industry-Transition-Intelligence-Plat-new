@@ -1,31 +1,39 @@
-from flask import Blueprint, request, jsonify, send_from_directory
-from database_sqlite import execute_query, execute_update
+from flask import Blueprint, request, jsonify, send_from_directory, Response
+from database_sqlite import execute_query, execute_update, get_db_connection
 from ml.github_analyzer import GitHubAnalyzer
 import os, json, uuid
 
 bp = Blueprint('students', __name__, url_prefix='/api/students')
 github_analyzer = GitHubAnalyzer()
 
-# On Vercel, filesystem is read-only except /tmp
-if os.environ.get('VERCEL'):
-    UPLOAD_DIR = '/tmp/uploads'
-else:
-    UPLOAD_DIR = os.path.join(os.path.dirname(__file__), '..', 'uploads')
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-def save_file(file_obj, prefix=''):
+def read_file_bytes(file_obj):
+    """Read uploaded PDF bytes, return (original_filename, bytes) or (None, None)."""
     if not file_obj or file_obj.filename == '':
-        return None
+        return None, None
     ext = os.path.splitext(file_obj.filename)[1].lower()
     if ext != '.pdf':
-        return None
-    stored_name = f"{prefix}_{uuid.uuid4().hex}{ext}"
-    file_obj.save(os.path.join(UPLOAD_DIR, stored_name))
-    return stored_name
+        return None, None
+    return file_obj.filename, file_obj.read()
 
-@bp.route('/uploads/<filename>', methods=['GET'])
-def serve_upload(filename):
-    return send_from_directory(UPLOAD_DIR, filename)
+@bp.route('/uploads/<int:record_id>/<string:table>', methods=['GET'])
+def serve_upload(record_id, table):
+    """Serve a PDF stored as BLOB in the DB. table = 'cert' or 'intern'."""
+    if table == 'cert':
+        rows = execute_query('SELECT file_name, file_data FROM student_certificates WHERE id = ?', (record_id,))
+    elif table == 'intern':
+        rows = execute_query('SELECT cert_name AS file_name, file_data FROM student_internships WHERE id = ?', (record_id,))
+    else:
+        return jsonify({'error': 'invalid table'}), 400
+
+    if not rows or not rows[0].get('file_data'):
+        return jsonify({'error': 'File not found'}), 404
+
+    row = rows[0]
+    return Response(
+        row['file_data'],
+        mimetype='application/pdf',
+        headers={'Content-Disposition': f'inline; filename="{row["file_name"] or "document.pdf"}"'}
+    )
 
 @bp.route('/', methods=['GET'])
 def get_students():
@@ -79,10 +87,10 @@ def add_student():
             except: certs = []
         for i, c in enumerate(certs):
             if not c.get('name'): continue
-            stored = save_file(request.files.get(f'cert_file_{i+1}'), f'cert_{student_id}_{i+1}')
+            fname, fbytes = read_file_bytes(request.files.get(f'cert_file_{i+1}'))
             execute_update(
-                'INSERT INTO student_certificates (student_id, name, file_name, has_file) VALUES (?,?,?,?)',
-                (student_id, c.get('name', ''), stored or c.get('file_name', ''), 1 if stored else 0)
+                'INSERT INTO student_certificates (student_id, name, file_name, has_file, file_data) VALUES (?,?,?,?,?)',
+                (student_id, c.get('name', ''), fname or c.get('file_name', ''), 1 if fbytes else 0, fbytes)
             )
 
         # Save internships
@@ -92,11 +100,11 @@ def add_student():
             except: internships = []
         for i, intern in enumerate(internships):
             if not (intern.get('company') or intern.get('role')): continue
-            stored = save_file(request.files.get(f'intern_cert_{i+1}'), f'intern_{student_id}_{i+1}')
+            fname, fbytes = read_file_bytes(request.files.get(f'intern_cert_{i+1}'))
             execute_update(
-                'INSERT INTO student_internships (student_id, company, role, duration, has_certificate, cert_name) VALUES (?,?,?,?,?,?)',
+                'INSERT INTO student_internships (student_id, company, role, duration, has_certificate, cert_name, file_data) VALUES (?,?,?,?,?,?,?)',
                 (student_id, intern.get('company', ''), intern.get('role', ''), intern.get('duration', ''),
-                 1 if stored else 0, stored or intern.get('cert_name', ''))
+                 1 if fbytes else 0, fname or intern.get('cert_name', ''), fbytes)
             )
 
         # Save projects
@@ -151,8 +159,14 @@ def delete_student(student_id):
 @bp.route('/<int:student_id>/portfolio', methods=['GET'])
 def get_portfolio(student_id):
     try:
-        certs = execute_query('SELECT * FROM student_certificates WHERE student_id = ?', (student_id,))
-        internships = execute_query('SELECT * FROM student_internships WHERE student_id = ?', (student_id,))
+        certs = execute_query(
+            'SELECT id, student_id, name, file_name, has_file FROM student_certificates WHERE student_id = ?',
+            (student_id,)
+        )
+        internships = execute_query(
+            'SELECT id, student_id, company, role, duration, has_certificate, cert_name FROM student_internships WHERE student_id = ?',
+            (student_id,)
+        )
         projects = execute_query('SELECT * FROM student_projects WHERE student_id = ?', (student_id,))
         return jsonify({'success': True, 'data': {
             'certificates': certs or [],

@@ -37,6 +37,7 @@ def init_db():
             name TEXT,
             file_name TEXT,
             has_file INTEGER DEFAULT 0,
+            file_data BLOB,
             FOREIGN KEY (student_id) REFERENCES students(id)
         )
     ''')
@@ -49,9 +50,16 @@ def init_db():
             duration TEXT,
             has_certificate INTEGER DEFAULT 0,
             cert_name TEXT,
+            file_data BLOB,
             FOREIGN KEY (student_id) REFERENCES students(id)
         )
     ''')
+
+    # Add file_data column to existing tables if missing (migration)
+    for table in ['student_certificates', 'student_internships']:
+        cols = [col[1] for col in cursor.execute(f"PRAGMA table_info({table})").fetchall()]
+        if 'file_data' not in cols:
+            cursor.execute(f"ALTER TABLE {table} ADD COLUMN file_data BLOB")
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS student_projects (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

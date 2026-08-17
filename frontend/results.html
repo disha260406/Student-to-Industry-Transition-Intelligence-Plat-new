@@ -499,9 +499,9 @@
                             </div>
                             ${(c.has_file == 1) ? `<span style="background:#d97706;color:white;font-size:0.7rem;padding:2px 8px;border-radius:20px;font-weight:600;">PDF ✓</span>` : ''}
                         </div>
-                        ${(c.has_file == 1 && c.file_name) ? `
+                        ${(c.has_file == 1) ? `
                         <div style="margin-top:0.6rem;">
-                            <a href="${API_URL}/students/uploads/${c.file_name}" target="_blank"
+                            <a href="${API_URL}/students/uploads/${c.id}/cert" target="_blank"
                                style="display:inline-flex;align-items:center;gap:5px;background:#1e293b;color:white;padding:4px 14px;border-radius:6px;font-size:0.78rem;font-weight:600;text-decoration:none;">
                                👁 View PDF
                             </a>
@@ -520,9 +520,9 @@
                             </div>
                             ${(i.has_certificate == 1) ? `<span style="background:#2563eb;color:white;font-size:0.7rem;padding:2px 8px;border-radius:20px;font-weight:600;">PDF ✓</span>` : ''}
                         </div>
-                        ${(i.has_certificate == 1 && i.cert_name) ? `
+                        ${(i.has_certificate == 1) ? `
                         <div style="margin-top:0.6rem;">
-                            <a href="${API_URL}/students/uploads/${i.cert_name}" target="_blank"
+                            <a href="${API_URL}/students/uploads/${i.id}/intern" target="_blank"
                                style="display:inline-flex;align-items:center;gap:5px;background:#1e293b;color:white;padding:4px 14px;border-radius:6px;font-size:0.78rem;font-weight:600;text-decoration:none;">
                                👁 View PDF
                             </a>
