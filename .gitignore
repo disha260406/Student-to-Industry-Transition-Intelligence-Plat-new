@@ -14,8 +14,7 @@ env/
 backend/students.db
 
 # Uploads (user files, not for git)
-backend/uploads/*
-!backend/uploads/.gitkeep
+backend/uploads/
 
 # IDE
 .vscode/
