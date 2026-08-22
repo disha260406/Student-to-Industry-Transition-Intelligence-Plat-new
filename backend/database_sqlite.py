@@ -25,7 +25,29 @@ def init_db():
             internships_count INTEGER DEFAULT 0,
             projects_count INTEGER DEFAULT 0,
             certifications_count INTEGER DEFAULT 0,
+            syllabus_pdf BLOB,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Ensure syllabus_pdf column exists in existing students table (migration)
+    student_cols = [col[1] for col in cursor.execute("PRAGMA table_info(students)").fetchall()]
+    if 'syllabus_pdf' not in student_cols:
+        cursor.execute("ALTER TABLE students ADD COLUMN syllabus_pdf BLOB")
+
+    # Create users table (for auth_routes)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            first_name TEXT NOT NULL,
+            last_name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            user_type TEXT NOT NULL DEFAULT 'student',
+            is_active INTEGER DEFAULT 1,
+            email_verified INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_login TIMESTAMP
         )
     ''')
 

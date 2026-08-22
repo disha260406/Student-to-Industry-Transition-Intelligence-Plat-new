@@ -95,7 +95,7 @@ def register():
         
         # Check if user already exists
         existing_user = execute_query(
-            "SELECT id FROM users WHERE email = %s",
+            "SELECT id FROM users WHERE email = ?",
             (email,)
         )
         
@@ -108,7 +108,7 @@ def register():
         # Insert new user
         user_id = execute_update(
             """INSERT INTO users (first_name, last_name, email, password_hash, user_type)
-               VALUES (%s, %s, %s, %s, %s)""",
+               VALUES (?, ?, ?, ?, ?)""",
             (first_name, last_name, email, password_hash.decode('utf-8'), user_type)
         )
         
@@ -153,7 +153,7 @@ def login():
         # Get user from database
         users = execute_query(
             """SELECT id, first_name, last_name, email, password_hash, user_type, is_active
-               FROM users WHERE email = %s""",
+               FROM users WHERE email = ?""",
             (email,)
         )
         
@@ -172,7 +172,7 @@ def login():
         
         # Update last login
         execute_update(
-            "UPDATE users SET last_login = NOW() WHERE id = %s",
+            "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?",
             (user['id'],)
         )
         
@@ -205,7 +205,7 @@ def verify():
         # Get user info
         users = execute_query(
             """SELECT id, first_name, last_name, email, user_type
-               FROM users WHERE id = %s AND is_active = TRUE""",
+               FROM users WHERE id = ? AND is_active = 1""",
             (request.user_id,)
         )
         
@@ -250,7 +250,7 @@ def get_profile():
         users = execute_query(
             """SELECT id, first_name, last_name, email, user_type, 
                       email_verified, created_at, last_login
-               FROM users WHERE id = %s""",
+               FROM users WHERE id = ?""",
             (request.user_id,)
         )
         
@@ -259,6 +259,13 @@ def get_profile():
         
         user = users[0]
         
+        created_at_val = user.get('created_at')
+        if hasattr(created_at_val, 'isoformat'):
+            created_at_val = created_at_val.isoformat()
+        last_login_val = user.get('last_login')
+        if hasattr(last_login_val, 'isoformat'):
+            last_login_val = last_login_val.isoformat()
+
         return jsonify({
             'user': {
                 'id': user['id'],
@@ -266,9 +273,9 @@ def get_profile():
                 'lastName': user['last_name'],
                 'email': user['email'],
                 'userType': user['user_type'],
-                'emailVerified': user['email_verified'],
-                'createdAt': user['created_at'].isoformat() if user['created_at'] else None,
-                'lastLogin': user['last_login'].isoformat() if user['last_login'] else None
+                'emailVerified': bool(user.get('email_verified')),
+                'createdAt': str(created_at_val) if created_at_val else None,
+                'lastLogin': str(last_login_val) if last_login_val else None
             }
         }), 200
         
@@ -290,11 +297,11 @@ def update_profile():
         params = []
         
         if 'firstName' in data:
-            update_fields.append("first_name = %s")
+            update_fields.append("first_name = ?")
             params.append(data['firstName'])
         
         if 'lastName' in data:
-            update_fields.append("last_name = %s")
+            update_fields.append("last_name = ?")
             params.append(data['lastName'])
         
         if not update_fields:
@@ -302,7 +309,7 @@ def update_profile():
         
         params.append(request.user_id)
         
-        query = f"UPDATE users SET {', '.join(update_fields)} WHERE id = %s"
+        query = f"UPDATE users SET {', '.join(update_fields)} WHERE id = ?"
         execute_update(query, tuple(params))
         
         return jsonify({

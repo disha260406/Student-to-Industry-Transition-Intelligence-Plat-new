@@ -196,6 +196,9 @@
 </div>
 
 <script>
+    const API_URL = (window.location.port === '5500' || window.location.port === '5501')
+        ? 'http://127.0.0.1:5000/api'
+        : '/api';
     const studentName = localStorage.getItem('studentName');
     const studentId = localStorage.getItem('studentId');
 
@@ -212,163 +215,162 @@
                 <a href="login.html" class="btn" style="margin-top:1rem;display:inline-block;">Login →</a>
             </div>`;
         document.getElementById('statsRow').innerHTML = '';
-        return;
-    }
+    } else {
+        let allApps = [];
+        let currentFilter = 'All';
 
-    let allApps = [];
-    let currentFilter = 'All';
-
-    async function loadFromBackend() {
-        try {
-            const res = await fetch(`/api/applications/${studentId}`);
-            const result = await res.json();
-            if (result.success) {
-                allApps = result.data;
-                // Sync to localStorage cache for badge on jobs page
-                localStorage.setItem('applications', JSON.stringify(allApps));
+        async function loadFromBackend() {
+            try {
+                const res = await fetch(`${API_URL}/applications/${studentId}`);
+                const result = await res.json();
+                if (result.success) {
+                    allApps = result.data;
+                    // Sync to localStorage cache for badge on jobs page
+                    localStorage.setItem('applications', JSON.stringify(allApps));
+                }
+            } catch (e) {
+                // Fallback to localStorage if backend unreachable
+                allApps = JSON.parse(localStorage.getItem('applications') || '[]');
             }
-        } catch (e) {
-            // Fallback to localStorage if backend unreachable
-            allApps = JSON.parse(localStorage.getItem('applications') || '[]');
+            renderStats();
+            renderCards();
         }
-        renderStats();
-        renderCards();
-    }
 
-    // Re-read when tab becomes visible
-    document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) loadFromBackend();
-    });
+        // Re-read when tab becomes visible
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) loadFromBackend();
+        });
 
-    function renderStats() {
-        const total = allApps.length;
-        const selected = allApps.filter(a => a.status === 'Selected').length;
-        const shortlisted = allApps.filter(a => a.status === 'Shortlisted').length;
-        const rejected = allApps.filter(a => a.status === 'Rejected').length;
-        const pending = allApps.filter(a => a.status === 'Applied').length;
+        function renderStats() {
+            const total = allApps.length;
+            const selected = allApps.filter(a => a.status === 'Selected').length;
+            const shortlisted = allApps.filter(a => a.status === 'Shortlisted').length;
+            const rejected = allApps.filter(a => a.status === 'Rejected').length;
+            const pending = allApps.filter(a => a.status === 'Applied').length;
 
-        document.getElementById('statsRow').innerHTML = `
-            <div class="stat-card">
-                <div class="num" style="color:#3b82f6;">${total}</div>
-                <div class="lbl">Total Applied</div>
-            </div>
-            <div class="stat-card">
-                <div class="num" style="color:#16a34a;">${selected}</div>
-                <div class="lbl">Selected 🎉</div>
-            </div>
-            <div class="stat-card">
-                <div class="num" style="color:#d97706;">${shortlisted}</div>
-                <div class="lbl">Shortlisted</div>
-            </div>
-            <div class="stat-card">
-                <div class="num" style="color:#64748b;">${pending}</div>
-                <div class="lbl">Pending</div>
-            </div>
-            <div class="stat-card">
-                <div class="num" style="color:#dc2626;">${rejected}</div>
-                <div class="lbl">Rejected</div>
-            </div>`;
-    }
-
-    function filterApps(status, btn) {
-        currentFilter = status;
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        btn.classList.add('active');
-        renderCards();
-    }
-
-    function renderCards() {
-        const container = document.getElementById('cardsContainer');
-        const filtered = currentFilter === 'All' ? allApps : allApps.filter(a => a.status === currentFilter);
-
-        if (filtered.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <div style="font-size:3rem;margin-bottom:1rem;">📭</div>
-                    <h2>${currentFilter === 'All' ? "No applications yet" : "No " + currentFilter + " jobs"}</h2>
-                    <p>${currentFilter === 'All' ? "Start applying to jobs to track them here." : "Nothing in this category yet."}</p>
-                    ${currentFilter === 'All' ? '<a href="jobs.html" class="btn">Browse Jobs →</a>' : ''}
+            document.getElementById('statsRow').innerHTML = `
+                <div class="stat-card">
+                    <div class="num" style="color:#3b82f6;">${total}</div>
+                    <div class="lbl">Total Applied</div>
+                </div>
+                <div class="stat-card">
+                    <div class="num" style="color:#16a34a;">${selected}</div>
+                    <div class="lbl">Selected 🎉</div>
+                </div>
+                <div class="stat-card">
+                    <div class="num" style="color:#d97706;">${shortlisted}</div>
+                    <div class="lbl">Shortlisted</div>
+                </div>
+                <div class="stat-card">
+                    <div class="num" style="color:#64748b;">${pending}</div>
+                    <div class="lbl">Pending</div>
+                </div>
+                <div class="stat-card">
+                    <div class="num" style="color:#dc2626;">${rejected}</div>
+                    <div class="lbl">Rejected</div>
                 </div>`;
-            return;
         }
 
-        container.innerHTML = '<div class="cards-grid">' + filtered.map((app, i) => {
-            const realIdx = allApps.indexOf(app);
-            const matchColor = app.match_percentage >= 70 ? '#16a34a' : app.match_percentage >= 50 ? '#d97706' : '#dc2626';
-            const cardClass = app.status === 'Selected' ? 'selected' : app.status === 'Shortlisted' ? 'shortlisted' : app.status === 'Rejected' ? 'rejected' : '';
-            const initials = app.company.substring(0, 2).toUpperCase();
+        function filterApps(status, btn) {
+            currentFilter = status;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            renderCards();
+        }
 
-            return `
-            <div class="app-card ${cardClass}">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;">
-                    <div style="display:flex;gap:0.75rem;align-items:center;">
-                        <div class="app-logo">${initials}</div>
-                        <div>
-                            <div style="font-weight:700;color:#1e293b;font-size:0.95rem;">${app.job_role}</div>
-                            <div style="color:#3b82f6;font-size:0.85rem;font-weight:500;">${app.company}</div>
+        function renderCards() {
+            const container = document.getElementById('cardsContainer');
+            const filtered = currentFilter === 'All' ? allApps : allApps.filter(a => a.status === currentFilter);
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size:3rem;margin-bottom:1rem;">📭</div>
+                        <h2>${currentFilter === 'All' ? "No applications yet" : "No " + currentFilter + " jobs"}</h2>
+                        <p>${currentFilter === 'All' ? "Start applying to jobs to track them here." : "Nothing in this category yet."}</p>
+                        ${currentFilter === 'All' ? '<a href="jobs.html" class="btn">Browse Jobs →</a>' : ''}
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = '<div class="cards-grid">' + filtered.map((app, i) => {
+                const realIdx = allApps.indexOf(app);
+                const matchColor = app.match_percentage >= 70 ? '#16a34a' : app.match_percentage >= 50 ? '#d97706' : '#dc2626';
+                const cardClass = app.status === 'Selected' ? 'selected' : app.status === 'Shortlisted' ? 'shortlisted' : app.status === 'Rejected' ? 'rejected' : '';
+                const initials = app.company.substring(0, 2).toUpperCase();
+
+                return `
+                <div class="app-card ${cardClass}">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;">
+                        <div style="display:flex;gap:0.75rem;align-items:center;">
+                            <div class="app-logo">${initials}</div>
+                            <div>
+                                <div style="font-weight:700;color:#1e293b;font-size:0.95rem;">${app.job_role}</div>
+                                <div style="color:#3b82f6;font-size:0.85rem;font-weight:500;">${app.company}</div>
+                            </div>
+                        </div>
+                        <span class="status-badge badge-${app.status}">${app.status === 'Selected' ? '🎉 ' : ''}${app.status}</span>
+                    </div>
+
+                    ${app.field ? `<div style="color:#64748b;font-size:0.82rem;margin-bottom:0.75rem;">🎓 ${app.field}</div>` : ''}
+
+                    <div style="margin-bottom:0.75rem;">
+                        <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#64748b;margin-bottom:0.3rem;">
+                            <span>Match Score</span>
+                            <span style="font-weight:700;color:${matchColor};">${app.match_percentage}%</span>
+                        </div>
+                        <div class="match-bar-bg">
+                            <div class="match-bar-fill" style="width:${app.match_percentage}%;background:${matchColor};"></div>
                         </div>
                     </div>
-                    <span class="status-badge badge-${app.status}">${app.status === 'Selected' ? '🎉 ' : ''}${app.status}</span>
-                </div>
 
-                ${app.field ? `<div style="color:#64748b;font-size:0.82rem;margin-bottom:0.75rem;">🎓 ${app.field}</div>` : ''}
-
-                <div style="margin-bottom:0.75rem;">
-                    <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#64748b;margin-bottom:0.3rem;">
-                        <span>Match Score</span>
-                        <span style="font-weight:700;color:${matchColor};">${app.match_percentage}%</span>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding-top:0.75rem;border-top:1px solid #f1f5f9;">
+                        <span style="font-size:0.8rem;color:#94a3b8;">📅 ${app.applied_date}</span>
+                        <div style="display:flex;gap:0.5rem;align-items:center;">
+                            <select class="status-select" onchange="updateStatus(${realIdx}, this.value)">
+                                <option value="Applied"     ${app.status==='Applied'     ?'selected':''}>Applied</option>
+                                <option value="Shortlisted" ${app.status==='Shortlisted' ?'selected':''}>Shortlisted</option>
+                                <option value="Selected"    ${app.status==='Selected'    ?'selected':''}>Selected</option>
+                                <option value="Rejected"    ${app.status==='Rejected'    ?'selected':''}>Rejected</option>
+                            </select>
+                            <button onclick="removeApp(${realIdx})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:1rem;padding:0.2rem;" title="Remove">🗑</button>
+                        </div>
                     </div>
-                    <div class="match-bar-bg">
-                        <div class="match-bar-fill" style="width:${app.match_percentage}%;background:${matchColor};"></div>
-                    </div>
-                </div>
+                </div>`;
+            }).join('') + '</div>';
+        }
 
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding-top:0.75rem;border-top:1px solid #f1f5f9;">
-                    <span style="font-size:0.8rem;color:#94a3b8;">📅 ${app.applied_date}</span>
-                    <div style="display:flex;gap:0.5rem;align-items:center;">
-                        <select class="status-select" onchange="updateStatus(${realIdx}, this.value)">
-                            <option value="Applied"     ${app.status==='Applied'     ?'selected':''}>Applied</option>
-                            <option value="Shortlisted" ${app.status==='Shortlisted' ?'selected':''}>Shortlisted</option>
-                            <option value="Selected"    ${app.status==='Selected'    ?'selected':''}>Selected</option>
-                            <option value="Rejected"    ${app.status==='Rejected'    ?'selected':''}>Rejected</option>
-                        </select>
-                        <button onclick="removeApp(${realIdx})" style="background:none;border:none;color:#cbd5e1;cursor:pointer;font-size:1rem;padding:0.2rem;" title="Remove">🗑</button>
-                    </div>
-                </div>
-            </div>`;
-        }).join('') + '</div>';
+        async function updateStatus(index, newStatus) {
+            const app = allApps[index];
+            if (!app) return;
+            try {
+                await fetch(`${API_URL}/applications/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: app.id, status: newStatus })
+                });
+            } catch(e) {}
+            allApps[index].status = newStatus;
+            localStorage.setItem('applications', JSON.stringify(allApps));
+            renderStats();
+            renderCards();
+        }
+
+        async function removeApp(index) {
+            const app = allApps[index];
+            if (!app) return;
+            try {
+                await fetch(`${API_URL}/applications/${app.id}`, { method: 'DELETE' });
+            } catch(e) {}
+            allApps.splice(index, 1);
+            localStorage.setItem('applications', JSON.stringify(allApps));
+            renderStats();
+            renderCards();
+        }
+
+        // Init
+        loadFromBackend();
     }
-
-    async function updateStatus(index, newStatus) {
-        const app = allApps[index];
-        if (!app) return;
-        try {
-            await fetch('/api/applications/status', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: app.id, status: newStatus })
-            });
-        } catch(e) {}
-        allApps[index].status = newStatus;
-        localStorage.setItem('applications', JSON.stringify(allApps));
-        renderStats();
-        renderCards();
-    }
-
-    async function removeApp(index) {
-        const app = allApps[index];
-        if (!app) return;
-        try {
-            await fetch(`/api/applications/${app.id}`, { method: 'DELETE' });
-        } catch(e) {}
-        allApps.splice(index, 1);
-        localStorage.setItem('applications', JSON.stringify(allApps));
-        renderStats();
-        renderCards();
-    }
-
-    // Init
-    loadFromBackend();
 
     // Curriculum upload
     function handleCurrUpload(input) {
@@ -408,7 +410,7 @@
         try {
             const formData = new FormData();
             formData.append('file', file);
-            const res = await fetch('/api/analysis/curriculum-gap', { method: 'POST', body: formData });
+            const res = await fetch(`${API_URL}/analysis/curriculum-gap`, { method: 'POST', body: formData });
             const data = await res.json();
 
             if (!data.success) { resultDiv.innerHTML = `<p style="color:#dc2626;">❌ ${data.error}</p>`; return; }

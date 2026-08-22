@@ -167,15 +167,33 @@ def compare_with_industry(curriculum_topics: dict) -> dict:
             else:
                 gaps.append({"skill": skill, "industry_level": required_levels.get(skill, "Intermediate")})
 
-        coverage = round(len(taught) / len(required_skills) * 100, 1) if required_skills else 0
+        enriched_taught = [
+            {
+                "skill": t["skill"],
+                "college_level": t["college_level"],
+                "level": t["college_level"],
+                "industry_level": t["industry_level"]
+            } for t in taught
+        ]
+        enriched_gaps = [
+            {
+                "skill": g["skill"],
+                "industry_level": g["industry_level"],
+                "required_level": g["industry_level"]
+            } for g in gaps
+        ]
 
         results[domain] = {
             "coverage_percent": coverage,
-            "taught_in_college": taught,
-            "skill_gaps": gaps,
+            "coverage_percentage": coverage,
+            "taught_in_college": enriched_taught,
+            "taught_skills": enriched_taught,
+            "skill_gaps": enriched_gaps,
+            "missing_skills": enriched_gaps,
             "level_gaps": level_gaps,
             "total_required": len(required_skills),
-            "total_covered": len(taught)
+            "total_covered": len(taught),
+            "taught_count": len(taught)
         }
 
     return results

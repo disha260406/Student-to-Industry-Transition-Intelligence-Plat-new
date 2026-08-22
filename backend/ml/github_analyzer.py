@@ -3,9 +3,22 @@ import re
 import os
 from collections import Counter
 
+# In-memory cache for GitHub API responses during runtime
+_GITHUB_CACHE = {}
+
 class GitHubAnalyzer:
     def __init__(self):
         token = os.environ.get('GITHUB_TOKEN', '')
+        if not token:
+            try:
+                from dotenv import load_dotenv
+                env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+                if os.path.exists(env_path):
+                    load_dotenv(env_path)
+                    token = os.environ.get('GITHUB_TOKEN', '')
+            except Exception:
+                pass
+
         self.headers = {'Accept': 'application/vnd.github.v3+json'}
         if token:
             self.headers['Authorization'] = f'token {token}'
@@ -49,33 +62,31 @@ class GitHubAnalyzer:
     def get_user_repos(self, username):
         try:
             url = f'https://api.github.com/users/{username}/repos'
-            response = requests.get(url, headers=self.headers, timeout=10, params={'per_page': 30, 'sort': 'updated'})
+            response = requests.get(url, headers=self.headers, timeout=3, params={'per_page': 15, 'sort': 'updated'})
             if response.status_code == 200:
                 return response.json()
             elif response.status_code == 403:
                 return 'rate_limited'
             return []
         except Exception as e:
-            print(f"Error fetching repos: {e}")
             return []
 
     def get_user_profile(self, username):
         try:
             url = f'https://api.github.com/users/{username}'
-            response = requests.get(url, headers=self.headers, timeout=10)
+            response = requests.get(url, headers=self.headers, timeout=3)
             if response.status_code == 200:
                 return response.json()
             elif response.status_code == 403:
                 return 'rate_limited'
             return None
         except Exception as e:
-            print(f"Error fetching profile: {e}")
             return None
 
     def get_repo_languages(self, username, repo_name):
         try:
             url = f'https://api.github.com/repos/{username}/{repo_name}/languages'
-            response = requests.get(url, headers=self.headers, timeout=10)
+            response = requests.get(url, headers=self.headers, timeout=3)
             if response.status_code == 200:
                 return response.json()
             return {}
@@ -85,7 +96,7 @@ class GitHubAnalyzer:
     def get_recent_commits(self, username, repo_name):
         try:
             url = f'https://api.github.com/repos/{username}/{repo_name}/commits'
-            response = requests.get(url, headers=self.headers, timeout=10, params={'per_page': 10})
+            response = requests.get(url, headers=self.headers, timeout=3, params={'per_page': 5})
             if response.status_code == 200:
                 return response.json()
             return []
@@ -201,6 +212,10 @@ class GitHubAnalyzer:
         if not username:
             return {'success': False, 'error': 'Invalid GitHub URL or username'}
 
+        cache_key = f"{username.lower()}:{claimed_skills.strip().lower()}"
+        if cache_key in _GITHUB_CACHE:
+            return _GITHUB_CACHE[cache_key]
+
         profile = self.get_user_profile(username)
         repos = self.get_user_repos(username)
 
@@ -242,7 +257,7 @@ class GitHubAnalyzer:
         total_verified = len(verified_skills)
         verification_score = (total_verified / total_claimed * 100) if total_claimed > 0 else 0
 
-        return {
+        result = {
             'success': True,
             'username': username,
             'profile_url': f'https://github.com/{username}',
@@ -263,6 +278,8 @@ class GitHubAnalyzer:
             'top_projects': repo_details[:5],
             'message': self._generate_message(verification_score, total_verified, total_claimed, authenticity_score)
         }
+        _GITHUB_CACHE[cache_key] = result
+        return result
 
     def _generate_message(self, score, verified, total, authenticity_score):
         auth_warning = ""

@@ -43,7 +43,7 @@ class SkillMatcher:
         skills = [s.strip().lower() for s in skills_text.split(',') if s.strip()]
         return set(skills)
     
-    def match(self, student_id, job_id):
+    def match(self, student_id, job_id, student_data=None, job_data=None, github_verified_skills=None):
         """
         Match student skills with job requirements using TF-IDF and Cosine Similarity
         Includes GitHub verification for skill validation
@@ -51,9 +51,22 @@ class SkillMatcher:
         Returns:
             dict: Match results with percentage, missing skills, and recommendations
         """
-        # Fetch student and job data
-        student = execute_query("SELECT * FROM students WHERE id = ?", (student_id,))[0]
-        job = execute_query("SELECT * FROM job_roles WHERE id = ?", (job_id,))[0]
+        # Fetch student and job data if not provided
+        if student_data is not None:
+            student = student_data
+        else:
+            students = execute_query("SELECT * FROM students WHERE id = ?", (student_id,))
+            if not students:
+                raise ValueError(f"Student with id {student_id} not found")
+            student = students[0]
+
+        if job_data is not None:
+            job = job_data
+        else:
+            jobs = execute_query("SELECT * FROM job_roles WHERE id = ?", (job_id,))
+            if not jobs:
+                raise ValueError(f"Job with id {job_id} not found")
+            job = jobs[0]
         
         # Get skills
         student_skills_raw = student.get('skills', '')
@@ -65,17 +78,18 @@ class SkillMatcher:
         required_skills_set = self._parse_skills(required_skills_raw)
         preferred_skills_set = self._parse_skills(preferred_skills_raw)
         
-        # Get GitHub verified skills if available
-        github_verified_skills = set()
-        if student.get('github_url'):
-            from ml.github_analyzer import GitHubAnalyzer
-            analyzer = GitHubAnalyzer()
-            try:
-                verification = analyzer.verify_skills(student.get('github_url'), student_skills_raw)
-                if verification['success']:
-                    github_verified_skills = set([s['skill'].lower() for s in verification['verified_skills']])
-            except:
-                pass  # Continue without GitHub verification if it fails
+        # Get GitHub verified skills if available and not passed in
+        if github_verified_skills is None:
+            github_verified_skills = set()
+            if student.get('github_url'):
+                from ml.github_analyzer import GitHubAnalyzer
+                analyzer = GitHubAnalyzer()
+                try:
+                    verification = analyzer.verify_skills(student.get('github_url'), student_skills_raw)
+                    if verification and verification.get('success'):
+                        github_verified_skills = set([s['skill'].lower() for s in verification.get('verified_skills', [])])
+                except Exception:
+                    pass  # Continue without GitHub verification if it fails
         
         # Normalize for TF-IDF
         student_skills_text = self._normalize_skills(student_skills_raw)
@@ -85,8 +99,8 @@ class SkillMatcher:
         if student_skills_text and required_skills_text:
             try:
                 vectors = self.vectorizer.fit_transform([student_skills_text, required_skills_text])
-                tfidf_similarity = cosine_similarity(vectors[0:1], vectors[1:2])[0][0]
-            except:
+                tfidf_similarity = float(cosine_similarity(vectors[0:1], vectors[1:2])[0][0])
+            except Exception:
                 tfidf_similarity = 0.0
         else:
             tfidf_similarity = 0.0
@@ -111,7 +125,7 @@ class SkillMatcher:
             verified_matched_skills = set()
         
         # Combine both scores (weighted average) + GitHub verification bonus
-        combined_score = (tfidf_similarity * 40) + (exact_match_percentage * 0.6) + verification_bonus
+        combined_score = min(100.0, (tfidf_similarity * 40) + (exact_match_percentage * 0.6) + verification_bonus)
         
         # Identify missing skills
         missing_required = list(required_skills_set - student_skills_set)
@@ -138,118 +152,111 @@ class SkillMatcher:
         github_context = ""
         if verified_skills_list:
             github_context = f" We verified {len(verified_skills_list)} of these through your GitHub repos."
-        
-        if combined_score >= 80 and cgpa_eligible:
-            friendly_message = f"Strong match for {job.get('company')}. Your profile fits what they're looking for.{github_context}"
-        elif combined_score >= 60 and cgpa_eligible:
-            friendly_message = f"You're qualified for this role. Pick up a couple more skills and you'll be even stronger.{github_context}"
-        elif combined_score >= 40:
-            friendly_message = f"You've got some of what they need. Work on the missing skills to boost your chances.{github_context}"
+            
+        if match_level == 'Excellent Match':
+            message = f"You are a great fit for this role! You have {len(matched_skills_list)} of {len(required_skills_set)} required skills.{github_context}"
+        elif match_level == 'Good Match':
+            message = f"You are a solid candidate. Focus on: {', '.join(missing_required[:2]) if missing_required else 'refining current skills'}.{github_context}"
+        elif match_level == 'Moderate Match':
+            message = f"You have potential. You need to learn: {', '.join(missing_required[:3]) if missing_required else 'more role-specific skills'}."
         else:
-            friendly_message = f"This one's a stretch right now. Focus on the skills below to get there.{github_context}"
+            message = f"Significant skill gap. Learn {', '.join(missing_required[:3]) if missing_required else 'required skills'} to qualify."
         
         return {
             'student_id': student_id,
-            'student_name': student.get('name'),
             'job_id': job_id,
             'job_title': job.get('title'),
             'company': job.get('company'),
+            'branch': job.get('branch'),
             'match_percentage': round(combined_score, 2),
+            'skill_match_percentage': round(combined_score, 2),
             'match_level': match_level,
-            'friendly_message': friendly_message,
-            'your_skills': matched_skills_list,
-            'github_verified_skills': verified_skills_list,
-            'skills_you_have': len(matched_skills_list),
-            'skills_verified_on_github': len(verified_skills_list),
-            'skills_to_learn': missing_required,
-            'bonus_skills': missing_preferred,
-            'total_skills_needed': len(required_skills_set),
-            'your_cgpa': student_cgpa,
-            'required_cgpa': min_cgpa,
+            'tfidf_similarity': round(tfidf_similarity * 100, 2),
+            'exact_match_percentage': round(exact_match_percentage, 2),
+            'matched_skills': matched_skills_list,
+            'verified_matched_skills': verified_skills_list,
+            'github_verification_bonus': round(verification_bonus, 2),
+            'missing_required_skills': missing_required,
+            'missing_preferred_skills': missing_preferred,
             'cgpa_eligible': cgpa_eligible,
-            'cgpa_message': f"✅ Your CGPA meets the requirement!" if cgpa_eligible else f"⚠️ CGPA requirement: {min_cgpa} (You have: {student_cgpa})",
-            'github_bonus_applied': round(verification_bonus, 2) if verification_bonus > 0 else 0
+            'student_cgpa': student_cgpa,
+            'min_cgpa_required': min_cgpa,
+            'message': message
         }
     
     def identify_gaps(self, student_id):
         """
-        Identify skill gaps across all active job roles
+        Identify overall skill gaps across all relevant jobs in the database
         
         Returns:
-            list: Skill gaps for each job with match percentages
+            list: Gaps for each job role
         """
         student = execute_query("SELECT * FROM students WHERE id = ?", (student_id,))[0]
         jobs = execute_query("SELECT * FROM job_roles WHERE is_active = 1")
         
-        student_skills_set = self._parse_skills(student.get('skills', ''))
-        
         gaps = []
         for job in jobs:
-            required_skills_set = self._parse_skills(job.get('required_skills', ''))
+            match_result = self.match(student_id, job['id'], student_data=student, job_data=job, github_verified_skills=set())
             
-            if required_skills_set:
-                matched = student_skills_set.intersection(required_skills_set)
-                missing = required_skills_set - student_skills_set
-                match_percentage = (len(matched) / len(required_skills_set)) * 100
-                
+            # Only include jobs with meaningful gap analysis
+            if match_result['missing_required_skills']:
                 gaps.append({
                     'job_id': job['id'],
                     'job_title': job['title'],
                     'company': job['company'],
-                    'match_percentage': round(match_percentage, 2),
-                    'matched_skills': list(matched),
-                    'missing_skills': list(missing),
-                    'total_required': len(required_skills_set)
+                    'match_percentage': match_result['match_percentage'],
+                    'missing_skills': match_result['missing_required_skills'],
+                    'preferred_missing': match_result['missing_preferred_skills'],
+                    'skills_to_learn_count': len(match_result['missing_required_skills']),
+                    'match_level': match_result['match_level']
                 })
         
-        # Sort by match percentage (descending)
+        # Sort by match percentage (highest first)
         gaps.sort(key=lambda x: x['match_percentage'], reverse=True)
         
         return gaps
     
     def get_recommendations(self, student_id):
         """
-        Generate skill recommendations based on gap analysis
+        Generate actionable learning recommendations based on skill gaps
         
         Returns:
-            dict: Prioritized skill recommendations
+            dict: Categorized recommendations with priority
         """
         gaps = self.identify_gaps(student_id)
         
-        # Count frequency of missing skills across all jobs
-        skill_frequency = {}
+        # Count frequency of missing skills
+        missing_freq = {}
         for gap in gaps:
             for skill in gap['missing_skills']:
-                skill_frequency[skill] = skill_frequency.get(skill, 0) + 1
+                missing_freq[skill] = missing_freq.get(skill, 0) + 1
         
-        # Sort skills by frequency (most demanded first)
-        sorted_skills = sorted(skill_frequency.items(), key=lambda x: x[1], reverse=True)
+        # Sort by frequency (most in-demand first)
+        sorted_skills = sorted(missing_freq.items(), key=lambda x: x[1], reverse=True)
         
         # Categorize by priority
-        high_priority = [skill for skill, freq in sorted_skills if freq >= len(gaps) * 0.5]
-        medium_priority = [skill for skill, freq in sorted_skills if len(gaps) * 0.25 <= freq < len(gaps) * 0.5]
-        low_priority = [skill for skill, freq in sorted_skills if freq < len(gaps) * 0.25]
+        high_priority = [skill for skill, count in sorted_skills if count >= 3]
+        medium_priority = [skill for skill, count in sorted_skills if count == 2]
+        low_priority = [skill for skill, count in sorted_skills if count == 1]
         
-        # Get best matching jobs
-        best_matches = [gap for gap in gaps if gap['match_percentage'] >= 50][:5]
+        # Find best matching jobs
+        best_matches = [g for g in gaps if g['match_percentage'] >= 60][:5]
         
         return {
-            'student_id': student_id,
+            'high_priority_skills': high_priority[:5],
+            'medium_priority_skills': medium_priority[:5],
+            'low_priority_skills': low_priority[:5],
+            'best_matched_jobs': best_matches,
             'total_jobs_analyzed': len(gaps),
-            'high_priority_skills': high_priority,
-            'medium_priority_skills': medium_priority,
-            'low_priority_skills': low_priority,
-            'skill_frequency': dict(sorted_skills[:10]),  # Top 10 most demanded
-            'best_matching_jobs': best_matches,
-            'overall_recommendation': self._generate_overall_recommendation(high_priority, medium_priority, best_matches)
+            'action_plan': self._generate_action_plan(high_priority, medium_priority, best_matches)
         }
     
-    def _generate_overall_recommendation(self, high_priority, medium_priority, best_matches):
-        """Generate user-friendly recommendation text"""
+    def _generate_action_plan(self, high_priority, medium_priority, best_matches):
+        """Generate human-readable action plan"""
         recommendations = []
         
         if high_priority:
-            recommendations.append(f"Start with {', '.join(high_priority[:3])} - these show up everywhere")
+            recommendations.append(f"Focus on learning {', '.join(high_priority[:3])} to unlock most jobs")
         
         if medium_priority:
             recommendations.append(f"After that, look at {', '.join(medium_priority[:3])}")
@@ -268,14 +275,38 @@ class SkillMatcher:
         Returns:
             list: Match results for all jobs sorted by match percentage
         """
-        jobs = execute_query("SELECT id FROM job_roles WHERE is_active = 1")
+        students = execute_query("SELECT * FROM students WHERE id = ?", (student_id,))
+        if not students:
+            return []
+        student = students[0]
+
+        # Get GitHub verified skills once for the batch
+        github_verified_skills = set()
+        student_skills_raw = student.get('skills', '')
+        if student.get('github_url'):
+            from ml.github_analyzer import GitHubAnalyzer
+            analyzer = GitHubAnalyzer()
+            try:
+                verification = analyzer.verify_skills(student.get('github_url'), student_skills_raw)
+                if verification and verification.get('success'):
+                    github_verified_skills = set([s['skill'].lower() for s in verification.get('verified_skills', [])])
+            except Exception:
+                pass
+
+        jobs = execute_query("SELECT * FROM job_roles WHERE is_active = 1")
         
         results = []
         for job in jobs:
-            match_result = self.match(student_id, job['id'])
+            match_result = self.match(
+                student_id, 
+                job['id'], 
+                student_data=student, 
+                job_data=job, 
+                github_verified_skills=github_verified_skills
+            )
             results.append(match_result)
         
         # Sort by match percentage
-        results.sort(key=lambda x: x['skill_match_percentage'], reverse=True)
+        results.sort(key=lambda x: x.get('match_percentage', 0), reverse=True)
         
         return results

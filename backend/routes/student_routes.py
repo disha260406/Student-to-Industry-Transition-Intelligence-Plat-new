@@ -151,6 +151,10 @@ def update_student(student_id):
 @bp.route('/<int:student_id>', methods=['DELETE'])
 def delete_student(student_id):
     try:
+        execute_update("DELETE FROM student_certificates WHERE student_id = ?", (student_id,))
+        execute_update("DELETE FROM student_internships WHERE student_id = ?", (student_id,))
+        execute_update("DELETE FROM student_projects WHERE student_id = ?", (student_id,))
+        execute_update("DELETE FROM applications WHERE student_id = ?", (student_id,))
         execute_update("DELETE FROM students WHERE id = ?", (student_id,))
         return jsonify({'success': True, 'message': 'Student deleted successfully'})
     except Exception as e:

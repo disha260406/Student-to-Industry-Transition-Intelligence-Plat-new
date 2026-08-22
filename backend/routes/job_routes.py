@@ -49,13 +49,14 @@ def create_job():
                 }), 400
         
         query = """INSERT INTO job_roles 
-                   (title, company, description, required_skills, preferred_skills, 
+                   (title, company, branch, description, required_skills, preferred_skills, 
                     min_cgpa, experience_required, salary_range, location, job_type) 
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
         
         params = (
             data['title'],
             data['company'],
+            data.get('branch', ''),
             data.get('description', ''),
             data['required_skills'],
             data.get('preferred_skills', ''),

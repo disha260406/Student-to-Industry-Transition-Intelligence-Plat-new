@@ -49,7 +49,9 @@ class PlacementPredictor:
         certifications = int(student.get('certifications_count', 0))
         
         # Prepare features
-        features = np.array([[cgpa, skills_count, internships, projects, certifications]])
+        import pandas as pd
+        feature_cols = ['cgpa', 'skills_count', 'internships', 'projects', 'certifications']
+        features = pd.DataFrame([[cgpa, skills_count, internships, projects, certifications]], columns=feature_cols)
         
         # Use trained model if available
         if self.model and self.scaler:

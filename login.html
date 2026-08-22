@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Student Career Platform</title>
     <style>
@@ -317,7 +319,16 @@
     </div>
 
     <script>
-        const API_URL = '/api';
+        const API_URL = (window.location.port === '5500' || window.location.port === '5501')
+            ? 'http://127.0.0.1:5000/api'
+            : '/api';
+
+        // Clear any stale status from browser cache/back-forward cache
+        window.addEventListener('pageshow', () => {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = '';
+            statusDiv.innerHTML = '';
+        });
         
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -361,7 +372,7 @@
                 
             } catch (error) {
                 statusDiv.className = 'status error';
-                statusDiv.innerHTML = `❌ Error: ${error.message}<br><small>Make sure backend is running on port 5000</small>`;
+                statusDiv.innerHTML = `❌ Error: ${error.message}<br><small>Make sure the backend is running</small>`;
             } finally {
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Login In';
